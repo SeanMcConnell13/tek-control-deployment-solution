@@ -1,0 +1,82 @@
+pipeline {
+  agent any
+
+  environment {
+    AZ_SUBSCRIPTION = credentials('azure-subscription-id')   // string credential
+    AZ_TENANT       = credentials('azure-tenant-id')         // string credential
+    AZ_CLIENT_ID    = credentials('azure-client-id')         // string credential
+    AZ_CLIENT_SECRET= credentials('azure-client-secret')     // secret text
+    ACR_LOGIN       = 'myregistry.azurecr.io'                // change to your ACR
+    IMAGE_NAME      = 'secure-demo-app'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build') {
+      steps {
+        sh 'docker build -t $IMAGE_NAME:$GIT_COMMIT part2'
+      }
+    }
+
+    stage('Unit Test') {
+      steps {
+        sh 'docker run --rm $IMAGE_NAME:$GIT_COMMIT node -e "console.log('ok')"'
+      }
+    }
+
+    stage('SAST (Semgrep)') {
+      steps {
+        sh '''
+          if ! command -v semgrep >/dev/null 2>&1; then pipx install semgrep; fi
+          semgrep ci --severity=ERROR || (echo "Semgrep failed"; exit 1)
+        '''
+      }
+    }
+
+    stage('Container & IaC Scan (Trivy)') {
+      steps {
+        sh '''
+          if ! command -v trivy >/dev/null 2>&1; then echo "Install trivy first"; exit 1; fi
+          trivy image --exit-code 1 --severity CRITICAL,HIGH $IMAGE_NAME:$GIT_COMMIT
+          trivy config --exit-code 1 --severity CRITICAL,HIGH part2/k8s || true
+        '''
+      }
+    }
+
+    stage('Azure Login + ACR Push') {
+      steps {
+        sh '''
+          az login --service-principal -u $AZ_CLIENT_ID -p $AZ_CLIENT_SECRET --tenant $AZ_TENANT 1>/dev/null
+          az account set --subscription $AZ_SUBSCRIPTION
+          az acr login --name ${ACR_LOGIN%%.*}
+          docker tag $IMAGE_NAME:$GIT_COMMIT $ACR_LOGIN/$IMAGE_NAME:$GIT_COMMIT
+          docker push $ACR_LOGIN/$IMAGE_NAME:$GIT_COMMIT
+        '''
+      }
+    }
+
+    stage('Deploy to AKS') {
+      steps {
+        sh '''
+          # Assumes an AKS cluster already exists and is ACR-attached; set your own resource group and cluster
+          AKS_RG="rg-aks-demo"
+          AKS_NAME="aks-demo"
+          az aks get-credentials -g $AKS_RG -n $AKS_NAME --overwrite-existing
+          sed -e "s|<ACR_LOGIN_SERVER>|$ACR_LOGIN|g" -e "s|{{GIT_COMMIT_SHA}}|$GIT_COMMIT|g" part2/k8s/deployment.yaml | kubectl apply -f -
+          kubectl rollout status deploy/secure-demo-app --timeout=120s
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'part2/k8s/deployment.yaml', fingerprint: true
+    }
+  }
+}

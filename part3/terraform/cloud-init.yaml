@@ -1,0 +1,18 @@
+#cloud-config
+package_update: true
+packages:
+  - nginx
+write_files:
+  - path: /var/www/html/index.html
+    permissions: '0644'
+    content: |
+      <html>
+        <head><title>Terraform Nginx</title></head>
+        <body>
+          <h1>Azure VM — provisioned by Terraform</h1>
+          <p>If you can see this page, the deployment was successful.</p>
+        </body>
+      </html>
+runcmd:
+  - systemctl enable nginx
+  - systemctl restart nginx
