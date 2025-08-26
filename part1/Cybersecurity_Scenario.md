@@ -14,7 +14,7 @@ A financial company suffered a breach through an unpatched web application vulne
 
 
 
-Injection (SQLi/NoSQLi, Deserialization → RCE)
+Injection (SQLi/NoSQLi, Deserialization to RCE)
 
 Equifax (2017): Attackers exploited an unpatched Apache Struts vulnerability (CVE-2017-5638) for remote code execution, compromising ~143M U.S. consumers.
 
