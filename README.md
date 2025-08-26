@@ -1,6 +1,7 @@
 TEKSystems Control Deployment Engineer Challenge — Solution
 
-This repository contains my end-to-end solution for the Controls Deployment Engineer technical assessment. It is structured around the three parts of the challenge and includes documentation, assumptions, Terraform code, container/Kubernetes artifacts, and a runnable Jenkins pipeline.
+This repository contains my end-to-end solution for the Controls Deployment Engineer technical assessment. It is structured around the three parts of the challenge and 
+includes documentation, assumptions, Terraform code, container/Kubernetes artifacts, and a runnable Jenkins pipeline.
 
 Repository Structure:
 
