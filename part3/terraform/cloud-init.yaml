@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Sean Stevens
+# Licensed under the Limited Evaluation License (see LICENSE at repo root).
+# Use limited to internal evaluation; no redistribution, modification, or commercial use.
+
 #cloud-config
 package_update: true
 packages:
